@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -109,5 +110,62 @@ public class QuizService {
                         .completedAt(progress.getCompletedAt())
                         .build())
                 .collect(Collectors.toList());
+    }
+
+    // 한 번에 채점하고 진행도까지 저장하는 안전한 로직
+    @Transactional
+    public QuizSubmitResponse submitAndSaveProgress(User user, QuizSubmitRequest request) {
+        int correctCount = 0;
+        int totalCount = request.getAnswers().size();
+        List<QuizSubmitResult> resultList = new ArrayList<>();
+
+        // 1. 프론트가 보낸 답안을 하나씩 돌면서 서버가 직접 채점!
+        for (QuizSubmitItem item : request.getAnswers()) {
+            Quiz quiz = quizRepository.findById(item.getQuizId())
+                    .orElseThrow(() -> new RuntimeException("퀴즈를 찾을 수 없습니다"));
+
+            boolean isCorrect = quiz.getCorrectAnswer().equals(item.getSelectedAnswer());
+            if (isCorrect) {
+                correctCount++;
+            }
+
+            // 해설지 리스트에 추가
+            resultList.add(QuizSubmitResult.builder()
+                    .quizId(quiz.getId())
+                    .isCorrect(isCorrect)
+                    .correctAnswer(quiz.getCorrectAnswer())
+                    .explanation(quiz.getExplanation())
+                    .build());
+        }
+
+        // 2. 서버가 직접 별점 계산
+        double correctRate = (double) correctCount / totalCount;
+        int stars = (correctRate >= 0.8) ? 3 : (correctRate >= 0.6) ? 2 : (correctRate >= 0.4) ? 1 : 0;
+        boolean isCleared = correctRate >= 0.6;
+
+        // 3. 서버가 직접 DB에 진행도 저장 (기존 갱신 로직 활용)
+        QuizProgress progress = quizProgressRepository
+                .findByUserAndStageNumber(user, request.getStageNumber())
+                .orElse(QuizProgress.builder()
+                        .user(user)
+                        .stageNumber(request.getStageNumber())
+                        .build());
+
+        if (progress.getId() == null || stars > progress.getStars()) {
+            progress.setIsCleared(isCleared);
+            progress.setStars(stars);
+            progress.setCorrectAnswers(correctCount);
+            progress.setTotalQuestions(totalCount);
+            quizProgressRepository.save(progress);
+        }
+
+        // 4. 최종 성적표 반환
+        return QuizSubmitResponse.builder()
+                .correctAnswers(correctCount)
+                .totalQuestions(totalCount)
+                .stars(stars)
+                .isCleared(isCleared)
+                .results(resultList) // 결과창에서 볼 해설 리스트
+                .build();
     }
 }

@@ -31,25 +31,25 @@ public class QuizController {
     /**
      * 퀴즈 답안 체크
      */
-    @PostMapping("/check")
-    public ResponseEntity<QuizResultResponse> checkAnswer(@Valid @RequestBody QuizAnswerRequest request) {
-        return ResponseEntity.ok(quizService.checkAnswer(request.getQuizId(), request.getSelectedAnswer()));
-    }
+
+//    @PostMapping("/check")
+//    public ResponseEntity<QuizResultResponse> checkAnswer(@Valid @RequestBody QuizAnswerRequest request) {
+//        return ResponseEntity.ok(quizService.checkAnswer(request.getQuizId(), request.getSelectedAnswer()));
+//    }
+
 
     /**
-     * 퀴즈 진행도 저장
+     * 퀴즈 전체 답안 제출 및 자동 채점/저장
      */
-    @PostMapping("/progress")
-    public ResponseEntity<QuizProgressResponse> saveProgress(
-            @RequestParam Integer stageNumber,
-            @RequestParam Integer correctAnswers,
-            @RequestParam Integer totalQuestions,
+    @PostMapping("/submit")
+    public ResponseEntity<QuizSubmitResponse> submitQuiz(
+            @RequestBody QuizSubmitRequest request,
             Authentication authentication) {
 
         Long userId = (Long) authentication.getPrincipal();
         User user = userService.getUserById(userId);
 
-        return ResponseEntity.ok(quizService.saveProgress(user, stageNumber, correctAnswers, totalQuestions));
+        return ResponseEntity.ok(quizService.submitAndSaveProgress(user, request));
     }
 
     /**
