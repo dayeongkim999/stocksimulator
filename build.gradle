@@ -51,7 +51,7 @@ dependencies {
     runtimeOnly 'com.h2database:h2'
 
     // Or use PostgreSQL/MySQL for production
-    // runtimeOnly 'org.postgresql:postgresql'
+    runtimeOnly 'org.postgresql:postgresql'
     // runtimeOnly 'com.mysql:mysql-connector-j'
 
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
