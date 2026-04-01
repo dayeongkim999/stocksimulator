@@ -37,4 +37,4 @@ out/
 .vscode/
 
 ### Security ###
-**/application-secret.properties
+./application-secret.properties
